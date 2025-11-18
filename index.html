@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TailorPro — One Page Tailor ERP (Final)</title>
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+:root{
+  --bg:#f3f5f9; --card:#ffffff; --muted:#6b7280; --accent:#0ea5a4; --primary:#0f172a;
+  --gap:12px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--primary)}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* left fixed header (visual) */
+.header{
+  width:330px;background:linear-gradient(180deg,#0f172a,#0b1220);color:#fff;padding:18px;display:flex;flex-direction:column;gap:12px;
+}
+.brand{font-weight:800;font-size:18px}
+.header .muted{font-size:13px;color:rgba(255,255,255,0.85)}
+
+/* main canvas */
+.canvas{flex:1;display:flex;flex-direction:column;gap:var(--gap);padding:14px;overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px;background:var(--card);border-radius:10px;box-shadow:0 8px 30px rgba(2,6,23,0.06)}
+.topcenter{text-align:center}
+.shop-title{font-size:18px;font-weight:700}
+.shop-sub{font-size:13px;color:var(--muted)}
+
+/* grid: 2 columns, 3 rows (fixed heights) no vertical scroll */
+.grid{
+  display:grid;
+  grid-template-columns:1fr 520px;
+  grid-template-rows:220px 320px 1fr;
+  gap:var(--gap);
+  height:calc(100vh - 92px);
+  overflow:hidden;
+}
+
+/* left big cards */
+.card{background:var(--card);border-radius:10px;padding:12px;box-shadow:0 8px 28px rgba(2,6,23,0.06);overflow:auto}
+.card h3{margin:0 0 8px 0}
+
+/* sections */
+.add-client { display:flex;flex-direction:column;gap:8px }
+.input{padding:8px;border-radius:8px;border:1px solid #e6e7ee;width:100%}
+.row{display:flex;gap:8px}
+.btn{background:var(--accent);color:#fff;padding:8px 10px;border-radius:8px;border:none;cursor:pointer}
+.small-btn{padding:6px 8px;border-radius:8px;border:none;background:#eef2ff;color:var(--accent);cursor:pointer}
+.edit-btn{background:#fff;border:1px solid #e6e7ee;padding:6px 8px;border-radius:8px;cursor:pointer}
+.small{font-size:13px;color:var(--muted)}
+
+/* clients table small */
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th{font-weight:700;color:var(--muted);text-align:left;padding:8px;border-bottom:1px solid #eee}
+.table td{padding:8px;border-bottom:1px solid #f6f6f6}
+
+/* invoice area */
+.invoice-area{display:flex;flex-direction:column;gap:8px;height:100%}
+.invoice-items{overflow:auto;max-height:180px;border-radius:6px;padding:6px;border:1px dashed #eee}
+
+/* right column panels */
+.right-stack{display:flex;flex-direction:column;gap:var(--gap);height:100%}
+.right-card{background:var(--card);border-radius:10px;padding:12px;box-shadow:0 8px 20px rgba(2,6,23,0.04);overflow:auto}
+
+/* no page scroll */
+::-webkit-scrollbar{height:8px;width:8px}
+@media(max-width:1100px){
+  .header{display:none}
+  .grid{grid-template-columns:1fr;grid-template-rows:200px 360px 1fr;overflow:auto}
+}
+</style>
+</head>
+<body>
+
+<div style="display:flex;height:100vh">
+  <!-- left header -->
+  <div class="header">
+    <div class="brand">TailorPro — Final</div>
+    <div class="muted">One page Tailor ERP — single canvas</div>
+    <div style="margin-top:10px">
+      <div style="font-weight:600">Shop</div>
+      <div id="hdrShopName" style="font-size:16px">MEN TAILOR & TEXTILE</div>
+      <div class="muted" id="hdrShopContact">+918000484520 • Kuwait – Comm. Area No. 9</div>
+    </div>
+
+    <div style="margin-top:auto">
+      <div class="small">Data saved locally (browser). Export/Import available.</div>
+    </div>
+  </div>
+
+  <!-- main canvas -->
+  <div class="canvas">
+    <!-- topbar -->
+    <div class="topbar">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div style="font-weight:700">☰</div>
+        <div class="small">TailorPro • Single Canvas</div>
+      </div>
+
+      <div class="topcenter">
+        <div class="shop-title" id="shopNameDisplay">MEN TAILOR & TEXTILE</div>
+        <div class="shop-sub" id="shopContactDisplay">Owner: X • +918000484520 • Kuwait</div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="small-btn" onclick="openShopEdit()">Edit Shop</button>
+        <button class="small-btn" onclick="exportJson()">Export</button>
+        <input id="importFile" type="file" style="display:none" onchange="importJson(event)">
+        <button class="small-btn" onclick="document.getElementById('importFile').click()">Import</button>
+      </div>
+    </div>
+
+    <!-- main grid -->
+    <div class="grid">
+
+      <!-- Cell 1 (left) Add client + measurements -->
+      <div class="card">
+        <h3>Add Client & Measurements</h3>
+        <div class="add-client">
+          <input id="c_name" class="input" placeholder="Name (required)">
+          <input id="c_phone" class="input" placeholder="Phone (required)">
+          <input id="c_book" class="input" placeholder="Book No (required)">
+          <div class="row">
+            <input id="c_address" class="input" placeholder="Address (optional)">
+            <input id="c_delivery" class="input" placeholder="Delivery date (optional)">
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <input id="m_chest" class="input" placeholder="Chest">
+            <input id="m_length" class="input" placeholder="Length">
+            <input id="m_waist" class="input" placeholder="Waist">
+            <input id="m_sleeve" class="input" placeholder="Sleeve">
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="addClient()">Save Client</button>
+            <button class="small-btn" onclick="clearClientForm()">Clear</button>
+          </div>
+
+          <div class="small" style="margin-top:8px">Added clients will show on the Search/Recent panel. No delete/reset button provided.</div>
+        </div>
+      </div>
+
+      <!-- Cell 1 (right) Shop summary + charts -->
+      <div class="right-stack">
+        <div class="right-card">
+          <h3>Shop Summary</h3>
+          <div style="display:flex;gap:12px;align-items:center">
+            <div><strong>Total Clients</strong><div id="totalClients" class="small">0</div></div>
+            <div><strong>Total Income</strong><div id="totalIncome" class="small">0 KD</div></div>
+            <div><strong>Profit</strong><div id="totalProfit" class="small">0 KD</div></div>
+          </div>
+        </div>
+
+        <div class="right-card">
+          <h3>Charts</h3>
+          <canvas id="chartOrders" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- Cell 2 (left) Search & Clients list -->
+      <div class="card">
+        <h3>Search & Select Client</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="searchBox" class="input" placeholder="Search by name / phone / book" oninput="renderClients()">
+          <button class="small-btn" onclick="renderClients()">Search</button>
+        </div>
+
+        <table class="table" id="clientsTable">
+          <thead><tr><th></th><th>#</th><th>Name</th><th>Phone</th><th>Book</th><th>Inv</th><th>Total</th><th>Due</th><th>Quick</th></tr></thead>
+          <tbody></tbody>
+        </table>
+
+        <div class="small" style="margin-top:8px">Shows last 5 by default. Use search to get full list.</div>
+      </div>
+
+      <!-- Cell 2 (right) Invoice area -->
+      <div class="card invoice-area">
+        <h3>Invoice — Build & Send</h3>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="selectClient" class="input" onchange="selectClientForInvoice(this.value)">
+            <option value="">-- Select client --</option>
+          </select>
+          <button class="small-btn" onclick="loadSelectedClient()">Load</button>
+        </div>
+
+        <div id="invClientInfo" class="small">Client: —</div>
+
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <input id="item_name" class="input" placeholder="Item name">
+          <input id="item_qty" type="number" class="input" value="1" style="width:90px">
+          <input id="item_price" type="number" class="input" placeholder="Price" style="width:120px">
+          <button class="btn small" onclick="addItemToInvoice()">Add</button>
+        </div>
+
+        <div class="invoice-items" id="invoiceItemsBox">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="color:var(--muted)"><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th><th></th></tr></thead>
+            <tbody id="invoiceItems"></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+          <div style="flex:1"><label class="small">Tax %</label><input id="tax" type="number" class="input" value="5"></div>
+          <div style="flex:1"><label class="small">Discount %</label><input id="discount" type="number" class="input" value="2"></div>
+          <div style="flex:1;text-align:right"><div class="small">Subtotal</div><div id="subtotalDisplay" style="font-weight:800">0 KD</div></div>
+          <div style="flex:1;text-align:right"><div class="small">Total</div><div id="totalDisplay" style="font-weight:900;color:var(--accent)">0 KD</div></div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn" onclick="saveInvoice()">Save Invoice</button>
+          <button class="small-btn" onclick="printInvoice()">Print</button>
+          <button class="small-btn" onclick="invoiceToPDF()">PDF</button>
+          <button class="small-btn" onclick="whatsappInvoice()">WhatsApp</button>
+        </div>
+
+        <div style="text-align:center;margin-top:10px">
+          <canvas id="qrCanvas" width="120" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- Cell 3 (left) Recent invoices & All data -->
+      <div class="card">
+        <h3>Recent Invoices & All Data</h3>
+        <div id="recentInvoices" class="small"></div>
+        <hr>
+        <h4>All Clients (Quick)</h4>
+        <div id="allClientsList" class="small" style="max-height:180px;overflow:auto"></div>
+      </div>
+
+      <!-- Cell 3 (right) Employees + Expenses summary -->
+      <div class="right-stack">
+        <div class="right-card">
+          <h3>Employees (Salary, Advance, Experience)</h3>
+          <div id="employeeList" class="small"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="e_name" class="input" placeholder="Name">
+            <input id="e_salary" class="input" placeholder="Salary KD">
+            <input id="e_advance" class="input" placeholder="Advance KD">
+            <button class="small-btn" onclick="addEmployee()">Add</button>
+          </div>
+          <div style="margin-top:8px">Monthly Salary Total: <strong id="monthlySalary">0 KD</strong></div>
+        </div>
+
+        <div class="right-card">
+          <h3>Expenses</h3>
+          <div id="expenseList" class="small"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input id="exp_title" class="input" placeholder="Title">
+            <input id="exp_amount" class="input" placeholder="Amount">
+            <button class="small-btn" onclick="addExpense()">Add</button>
+          </div>
+          <div style="margin-top:8px">Total Expenses: <strong id="totalExpenses">0 KD</strong></div>
+        </div>
+
+      </div>
+
+    </div> <!-- grid end -->
+  </div>
+</div>
+
+<!-- Shop Edit modal-like area (inline) -->
+<div id="shopEditArea" style="display:none;position:fixed;left:50%;top:8%;transform:translateX(-50%);background:#fff;padding:12px;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,0.4);z-index:999">
+  <div style="font-weight:700">Edit Shop</div>
+  <input id="shop_name" class="input" placeholder="Shop name">
+  <input id="shop_phone" class="input" placeholder="Phone">
+  <input id="shop_addr" class="input" placeholder="Address">
+  <div style="display:flex;gap:8px"><button class="btn" onclick="saveShopEdit()">Save</button><button class="small-btn" onclick="closeShopEdit()">Close</button></div>
+</div>
+
+<script>
+/* ===== STORAGE MODEL =====
+store = {
+  shop: {name, phone, address},
+  clients: [ {id,name,phone,book,address,delivery,measurements:{...},invoices:[], clothIn, clothOut} ],
+  employees: [ {id,name,salary,advance,experience,status} ],
+  expenses: [ {id,title,amount,date} ]
+}
+*/
+const KEY = 'tailorpro_final_v1';
+let store = JSON.parse(localStorage.getItem(KEY) || 'null');
+if(!store){
+  store = {
+    shop:{name:'MEN TAILOR & TEXTILE', phone:'+918000484520', address:'Kuwait – Comm. Area No. 9'},
+    clients: [],
+    employees: [],
+    expenses: []
+  };
+  // demo client
+  store.clients.push({
+    id: idGen(), name:'Heena', phone:'+96551234567', book:'B001', address:'', delivery:'',
+    measurements:{chest:'36',length:'40'}, invoices:[{id:idGen(),date:new Date().toISOString(),items:[{name:'Kurta',qty:2,price:12,subtotal:24}],subtotal:24,tax:5,discount:0,total:25.2,paid:0}], clothIn:0, clothOut:2
+  });
+  save();
+}
+
+function save(){ localStorage.setItem(KEY, JSON.stringify(store)); }
+
+/* helper */
+function idGen(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function fmt(x){ return (Number(x)||0).toFixed(2) + ' KD'; }
+function esc(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+/* UI init */
+function init(){
+  document.getElementById('shopNameDisplay').innerText = store.shop.name;
+  document.getElementById('shopContactDisplay').innerText = `Owner: ${store.shop.name} • ${store.shop.phone}`;
+  document.getElementById('hdrShopName').innerText = store.shop.name;
+  document.getElementById('hdrShopContact').innerText = `${store.shop.phone} • ${store.shop.address}`;
+
+  renderClients();
+  renderSelect();
+  updateSummary();
+  renderRecentInvoices();
+  renderAllClients();
+  renderEmployees();
+  renderExpenses();
+  initCharts();
+}
+init();
+
+/* ========== Clients ========== */
+function addClient(){
+  const name = document.getElementById('c_name').value.trim();
+  const phone = document.getElementById('c_phone').value.trim();
+  const book = document.getElementById('c_book').value.trim();
+  if(!name || !phone || !book){ alert('Please fill Name, Phone, Book No (mandatory)'); return; }
+  const c = {
+    id: idGen(), name, phone, book,
+    address: document.getElementById('c_address').value.trim(),
+    delivery: document.getElementById('c_delivery').value.trim(),
+    measurements:{
+      chest: document.getElementById('m_chest').value.trim(),
+      length: document.getElementById('m_length').value.trim(),
+      waist: document.getElementById('m_waist').value.trim(),
+      sleeve: document.getElementById('m_sleeve').value.trim()
+    },
+    invoices:[], clothIn:0, clothOut:0
+  };
+  store.clients.push(c); save(); clearClientForm(); renderClients(); renderSelect(); updateSummary(); alert('Client saved');
+}
+function clearClientForm(){
+  ['c_name','c_phone','c_book','c_address','c_delivery','m_chest','m_length','m_waist','m_sleeve'].forEach(id=>document.getElementById(id).value='');
+}
+function renderClients(){
+  const q = (document.getElementById('searchBox').value||'').trim().toLowerCase();
+  let list = [];
+  if(q){
+    list = store.clients.filter(c => (c.name||'').toLowerCase().includes(q) || (c.phone||'').toLowerCase().includes(q) || (c.book||'').toLowerCase().includes(q));
+  } else {
+    list = store.clients.slice(-5).reverse();
+  }
+  const tbody = document.querySelector('#clientsTable tbody');
+  tbody.innerHTML = '';
+  list.forEach((c,i)=>{
+    const total = (c.invoices||[]).reduce((s,inv)=>s+(inv.total||0),0);
+    const paid = (c.invoices||[]).reduce((s,inv)=>s+(inv.paid||0),0);
+    const due = total - paid;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><button class="small-btn" onclick="selectClientForInvoice('${c.id}')">Select</button></td>
+      <td>${i+1}</td>
+      <td id="name_${c.id}">${esc(c.name)}</td>
+      <td id="phone_${c.id}">${esc(c.phone)}</td>
+      <td id="book_${c.id}">${esc(c.book)}</td>
+      <td>${(c.invoices||[]).length}</td>
+      <td>${fmt(total)}</td>
+      <td>${fmt(due)}</td>
+      <td><button class="edit-btn" onclick="startQuickEdit('${c.id}')">Quick Edit</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* quick inline edit (name, phone, book) */
+function startQuickEdit(id){
+  const nameEl = document.getElementById('name_'+id);
+  const phoneEl = document.getElementById('phone_'+id);
+  const bookEl = document.getElementById('book_'+id);
+  const c = store.clients.find(x=>x.id===id); if(!c) return;
+  nameEl.innerHTML = `<input id="qe_name_${id}" class="input" value="${esc(c.name)}">`;
+  phoneEl.innerHTML = `<input id="qe_phone_${id}" class="input" value="${esc(c.phone)}">`;
+  bookEl.innerHTML = `<input id="qe_book_${id}" class="input" value="${esc(c.book)}">`;
+  // change actions cell to Save/Cancel
+  const row = nameEl.closest('tr');
+  const actionsCell = row.querySelector('td:last-child');
+  actionsCell.innerHTML = `<button class="btn small" onclick="saveQuick('${id}')">Save</button> <button class="edit-btn" onclick="renderClients()">Cancel</button>`;
+}
+function saveQuick(id){
+  const n = document.getElementById('qe_name_'+id).value.trim();
+  const p = document.getElementById('qe_phone_'+id).value.trim();
+  const b = document.getElementById('qe_book_'+id).value.trim();
+  if(!n||!p||!b){ alert('Name, Phone, Book required'); return; }
+  const c = store.clients.find(x=>x.id===id);
+  c.name = n; c.phone = p; c.book = b; save(); renderClients(); renderSelect(); updateSummary();
+}
+
+/* ========== Select client for invoice ========== */
+function renderSelect(){
+  const sel = document.getElementById('selectClient'); sel.innerHTML = `<option value="">-- Select client --</option>`;
+  store.clients.forEach(c=>{
+    const opt = document.createElement('option'); opt.value = c.id; opt.text = `${c.name} • ${c.phone}`;
+    sel.appendChild(opt);
+  });
+}
+let currentInvoiceClient = null;
+function selectClientForInvoice(id){
+  if(!id){ currentInvoiceClient = null; document.getElementById('invClientInfo').innerText = 'Client: —'; return; }
+  currentInvoiceClient = store.clients.find(x=>x.id===id);
+  document.getElementById('invClientInfo').innerText = `Client: ${currentInvoiceClient.name} | ${currentInvoiceClient.phone} | Book: ${currentInvoiceClient.book}`;
+  // empty invoice items for new invoice
+  invoiceItems = []; renderInvoiceItems();
+}
+function loadSelectedClient(){
+  const id = document.getElementById('selectClient').value;
+  if(!id) return alert('Choose client');
+  selectClientForInvoice(id);
+}
+
+/* ========== Invoice ========== */
+let invoiceItems = [];
+function addItemToInvoice(){
+  const name = document.getElementById('item_name').value.trim();
+  const qty = Math.max(1, Number(document.getElementById('item_qty').value) || 1);
+  const price = Number(document.getElementById('item_price').value) || 0;
+  if(!name) return alert('Enter item name');
+  invoiceItems.push({ name, qty, price, subtotal: +(qty * price) });
+  document.getElementById('item_name').value=''; document.getElementById('item_qty').value='1'; document.getElementById('item_price').value='';
+  renderInvoiceItems();
+}
+function renderInvoiceItems(){
+  const body = document.getElementById('invoiceItems');
+  body.innerHTML = '';
+  let subtotal = 0;
+  invoiceItems.forEach((it, idx)=>{
+    subtotal += it.subtotal;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${esc(it.name)}</td><td>${it.qty}</td><td>${it.price.toFixed(2)}</td><td>${it.subtotal.toFixed(2)}</td><td><button class="edit-btn" onclick="removeInvoiceItem(${idx})">Del</button></td>`;
+    body.appendChild(tr);
+  });
+  document.getElementById('subtotalDisplay').innerText = fmt(subtotal);
+  const taxPct = Number(document.getElementById('tax').value) || 0;
+  const discPct = Number(document.getElementById('discount').value) || 0;
+  const tax = +(subtotal * taxPct / 100);
+  const disc = +(subtotal * discPct / 100);
+  const total = +(subtotal + tax - disc);
+  document.getElementById('totalDisplay').innerText = fmt(total);
+  // qr
+  if(currentInvoiceClient){
+    const qtxt = `${store.shop.name}\nClient:${currentInvoiceClient.name}\nTotal:${total.toFixed(2)} KD\nTime:${new Date().toLocaleString()}`;
+    new QRious({ element: document.getElementById('qrCanvas'), value: qtxt, size:120 });
+  }
+}
+function removeInvoiceItem(i){ invoiceItems.splice(i,1); renderInvoiceItems(); }
+
+function saveInvoice(){
+  if(!currentInvoiceClient) return alert('Select a client first');
+  if(invoiceItems.length === 0) return alert('Add invoice items');
+  const subtotal = invoiceItems.reduce((s,i)=>s+i.subtotal,0);
+  const taxPct = Number(document.getElementById('tax').value) || 0;
+  const discPct = Number(document.getElementById('discount').value) || 0;
+  const total = +(subtotal + subtotal*taxPct/100 - subtotal*discPct/100);
+  const inv = { id: idGen(), date: new Date().toISOString(), items: invoiceItems.slice(), subtotal, tax:taxPct, discount:discPct, total, paid:0 };
+  currentInvoiceClient.invoices = currentInvoiceClient.invoices || []; currentInvoiceClient.invoices.push(inv);
+  currentInvoiceClient.clothOut = (currentInvoiceClient.clothOut||0) + invoiceItems.reduce((s,i)=>s+i.qty,0);
+  save();
+  invoiceItems = []; renderInvoiceItems(); renderClients(); renderRecentInvoices(); renderAllClients(); updateSummary();
+  alert('Invoice saved: ' + fmt(total));
+}
+
+/* Print invoice (invoice only) */
+function printInvoice(){
+  if(!currentInvoiceClient) return alert('Select client');
+  const subtotalText = document.getElementById('subtotalDisplay').innerText;
+  const totalText = document.getElementById('totalDisplay').innerText;
+  const itemsHtml = invoiceItems.map(it=>`<tr><td>${esc(it.name)}</td><td>${it.qty}</td><td>${it.price.toFixed(2)}</td><td>${it.subtotal.toFixed(2)}</td></tr>`).join('');
+  const qrData = document.getElementById('qrCanvas').toDataURL();
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Invoice</title><style>body{font-family:Arial;padding:12px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:8px}</style></head><body>
+    <h2>${esc(store.shop.name)}</h2><div>${esc(store.shop.phone)} • ${esc(store.shop.address)}</div><hr/>
+    <h3>Invoice for ${esc(currentInvoiceClient.name)}</h3><div>Phone: ${esc(currentInvoiceClient.phone)}</div><div>Time: ${new Date().toLocaleString()}</div>
+    <table><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead><tbody>${itemsHtml}</tbody></table>
+    <p>${subtotalText} | ${totalText}</p><div style="margin-top:12px"><img src="${qrData}" /></div>
+    <p style="margin-top:12px">Thank you! - ${esc(store.shop.name)}</p></body></html>`;
+  const w = window.open('','_blank'); w.document.write(html); w.document.close(); w.print();
+}
+
+/* PDF invoice using jsPDF */
+async function invoiceToPDF(){
+  if(!currentInvoiceClient) return alert('Select client');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14); doc.text(store.shop.name, 14, 20);
+  doc.setFontSize(10); doc.text(`${store.shop.phone} • ${store.shop.address}`, 14, 26);
+  doc.setFontSize(12); doc.text(`Invoice for: ${currentInvoiceClient.name}`, 14, 40);
+  doc.setFontSize(10); doc.text(`Phone: ${currentInvoiceClient.phone}`, 14, 46);
+  let y = 58;
+  doc.autoTable = doc.autoTable || null; // not using autoTable to keep small
+  // items
+  doc.setFontSize(10);
+  doc.text('Item',14,y); doc.text('Qty',110,y); doc.text('Price',140,y); doc.text('Subtotal',170,y);
+  y += 6;
+  let subtotal = 0;
+  invoiceItems.forEach(it=>{
+    doc.text(esc(it.name),14,y);
+    doc.text(String(it.qty),110,y);
+    doc.text(it.price.toFixed(2),140,y);
+    doc.text(it.subtotal.toFixed(2),170,y);
+    subtotal += it.subtotal;
+    y += 6;
+    if(y>270){ doc.addPage(); y=20; }
+  });
+  const taxPct = Number(document.getElementById('tax').value)||0;
+  const discPct = Number(document.getElementById('discount').value)||0;
+  const tax = +(subtotal * taxPct / 100);
+  const disc = +(subtotal * discPct / 100);
+  const total = +(subtotal + tax - disc);
+  y += 6;
+  doc.text(`Subtotal: ${subtotal.toFixed(2)} KD`,14,y);
+  y += 6; doc.text(`Tax (${taxPct}%): ${tax.toFixed(2)} KD`,14,y);
+  y += 6; doc.text(`Discount (${discPct}%): ${disc.toFixed(2)} KD`,14,y);
+  y += 6; doc.setFontSize(12); doc.text(`Total: ${total.toFixed(2)} KD`,14,y);
+  // add QR as image (from canvas)
+  const qr = document.getElementById('qrCanvas').toDataURL('image/png');
+  doc.addImage(qr,'PNG',150,20,40,40);
+  doc.save(`invoice_${currentInvoiceClient.name}_${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+/* WhatsApp message (text) */
+function whatsappInvoice(){
+  if(!currentInvoiceClient) return alert('Select client');
+  let msg = `${store.shop.name} - Invoice\nClient: ${currentInvoiceClient.name}\nPhone: ${currentInvoiceClient.phone}\n`;
+  invoiceItems.forEach(it=> msg += `${it.name} x${it.qty} = ${it.subtotal.toFixed(2)} KD\n`);
+  msg += `Tax: ${document.getElementById('tax').value || 0}% Discount: ${document.getElementById('discount').value || 0}%\nTotal: ${document.getElementById('totalDisplay').innerText}\nTime: ${new Date().toLocaleString()}\nThank you!`;
+  const url = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(msg);
+  window.open(url,'_blank');
+}
+
+/* ========== Recent Invoices & All Clients display ========== */
+function renderRecentInvoices(){
+  const wrap = document.getElementById('recentInvoices');
+  let invs = [];
+  store.clients.forEach(c => (c.invoices||[]).forEach(inv => invs.push({client:c, inv})));
+  invs.sort((a,b)=> new Date(b.inv.date) - new Date(a.inv.date));
+  let html = '';
+  invs.slice(0,8).forEach(x=>{ html += `<div>${esc(x.client.name)} — ${fmt(x.inv.total)} — <span class="small">${new Date(x.inv.date).toLocaleString()}</span></div>`; });
+  wrap.innerHTML = html || '<div class="small">No invoices yet.</div>';
+}
+function renderAllClients(){
+  const wrap = document.getElementById('allClientsList');
+  let html = '';
+  store.clients.forEach(c=>{ html += `<div>${esc(c.name)} • ${esc(c.phone)} • Book:${esc(c.book)} • Meas:${esc(c.measurements?.chest||'')}|${esc(c.measurements?.length||'')}</div>`; });
+  wrap.innerHTML = html || '<div class="small">No clients.</div>';
+}
+
+/* ========== Employees & Expenses ========== */
+function addEmployee(){
+  const name = document.getElementById('e_name').value.trim();
+  const salary = Number(document.getElementById('e_salary').value)||0;
+  const advance = Number(document.getElementById('e_advance').value)||0;
+  if(!name) return alert('Employee name required');
+  store.employees.push({ id:idGen(), name, salary, advance, experience:0, status:'Active' });
+  save(); renderEmployees(); updateSummary();
+  document.getElementById('e_name').value=''; document.getElementById('e_salary').value=''; document.getElementById('e_advance').value='';
+}
+function renderEmployees(){
+  const wrap = document.getElementById('employeeList'); wrap.innerHTML = '';
+  let html = '';
+  store.employees.forEach(e=> html += `<div>${esc(e.name)} • Salary:${fmt(e.salary)} • Adv:${fmt(e.advance)}</div>`);
+  wrap.innerHTML = html || '<div class="small">No employees</div>';
+  const monthly = store.employees.reduce((s,e)=> s + (Number(e.salary)||0),0);
+  document.getElementById('monthlySalary').innerText = fmt(monthly);
+}
+function addExpense(){
+  const title = document.getElementById('exp_title').value.trim();
+  const amt = Number(document.getElementById('exp_amount').value)||0;
+  if(!title || !amt) return alert('Title and amount required');
+  store.expenses.push({ id:idGen(), title, amount:amt, date:new Date().toISOString() });
+  save(); renderExpenses(); updateSummary();
+  document.getElementById('exp_title').value=''; document.getElementById('exp_amount').value='';
+}
+function renderExpenses(){
+  const wrap = document.getElementById('expenseList'); wrap.innerHTML = '';
+  let html = '';
+  store.expenses.slice().reverse().slice(0,8).forEach(e=> html += `<div>${esc(e.title)} • ${fmt(e.amount)}</div>`);
+  wrap.innerHTML = html || '<div class="small">No expenses</div>';
+  const total = store.expenses.reduce((s,e)=> s + (Number(e.amount)||0),0);
+  document.getElementById('totalExpenses').innerText = fmt(total);
+}
+
+/* ========== Summary & Charts ========== */
+function updateSummary(){
+  const totalClients = store.clients.length;
+  const totalIncome = store.clients.reduce((s,c)=> s + ((c.invoices||[]).reduce((a,i)=>a+(i.total||0),0)), 0);
+  const salary = store.employees.reduce((s,e)=> s + (Number(e.salary)||0),0);
+  const advances = store.employees.reduce((s,e)=> s + (Number(e.advance)||0),0);
+  const expenses = store.expenses.reduce((s,e)=> s + (Number(e.amount)||0),0);
+  const discounts = store.clients.reduce((s,c)=> s + ((c.invoices||[]).reduce((a,i)=> a + (i.subtotal * (i.discount||0) / 100),0)), 0);
+  const profit = totalIncome - (salary + advances + expenses + discounts);
+  document.getElementById('totalClients').innerText = totalClients;
+  document.getElementById('totalIncome').innerText = fmt(totalIncome);
+  document.getElementById('totalProfit').innerText = fmt(profit);
+  // also quick stats
+  document.getElementById('totalClients').innerText = totalClients;
+}
+
+/* charts: weekly orders */
+let chartOrders;
+function initCharts(){
+  const ctx = document.getElementById('chartOrders').getContext('2d');
+  chartOrders = new Chart(ctx, { type:'line', data:{ labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], datasets:[{ label:'Orders', data:[0,0,0,0,0,0,0], backgroundColor:'rgba(14,165,164,0.12)', borderColor:'#0ea5a4', fill:true }]}, options:{ plugins:{ legend:{display:false}}, responsive:true, maintainAspectRatio:false }});
+  updateChartsFromData();
+}
+function updateChartsFromData(){
+  const weekCounts = [0,0,0,0,0,0,0];
+  store.clients.forEach(c => (c.invoices||[]).forEach(inv=>{
+    const d = new Date(inv.date);
+    const idx = (d.getDay() + 6) % 7; // map Mon=0..Sun=6
+    weekCounts[idx] = (weekCounts[idx]||0) + 1;
+  }));
+  if(chartOrders){ chartOrders.data.datasets[0].data = weekCounts; chartOrders.update(); }
+}
+
+/* ========== Export / Import ========== */
+function exportJson(){
+  const a = document.createElement('a');
+  a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(store));
+  a.download = 'tailorpro_data.json';
+  a.click();
+}
+function importJson(e){
+  const f = e.target.files[0]; if(!f) return;
+  const r = new FileReader(); r.onload = () => {
+    try{
+      const parsed = JSON.parse(r.result);
+      if(parsed && parsed.clients){
+        store = parsed; save(); init(); alert('Imported successfully');
+      } else alert('Invalid file');
+    } catch(err){ alert('Parse error'); }
+  }; r.readAsText(f);
+}
+
+/* ========== Shop Edit ========== */
+function openShopEdit(){
+  document.getElementById('shop_name').value = store.shop.name;
+  document.getElementById('shop_phone').value = store.shop.phone;
+  document.getElementById('shop_addr').value = store.shop.address;
+  document.getElementById('shopEditArea').style.display = 'block';
+}
+function closeShopEdit(){ document.getElementById('shopEditArea').style.display = 'none'; }
+function saveShopEdit(){
+  store.shop.name = document.getElementById('shop_name').value.trim() || store.shop.name;
+  store.shop.phone = document.getElementById('shop_phone').value.trim() || store.shop.phone;
+  store.shop.address = document.getElementById('shop_addr').value.trim() || store.shop.address;
+  save(); closeShopEdit(); init();
+}
+
+/* small utilities */
+function renderSelect(){ renderSelect(); } // placeholder to satisfy earlier calls (safe)
+function renderClientsSafe(){ renderClients(); } // alias
+
+/* re-run small updates periodically */
+setInterval(()=>{ updateChartsFromData(); renderRecentInvoices(); updateSummary(); }, 5000);
+
+/* make functions available for console */
+window.store = store;
+window.saveStore = save;
+window.updateChartsFromData = updateChartsFromData;
+
+</script>
+</body>
+</html>
