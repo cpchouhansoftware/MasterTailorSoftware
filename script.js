@@ -1,0 +1,1 @@
+function addClient(){const n=document.getElementById('name').value;const p=document.getElementById('phone').value;const b=document.getElementById('book').value; if(!n||!p||!b)return; const tb=document.querySelector('#clientTable tbody'); const tr=document.createElement('tr'); tr.innerHTML=`<td>${n}</td><td>${p}</td><td>${b}</td>`; tb.appendChild(tr);}
